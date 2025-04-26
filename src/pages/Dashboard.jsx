@@ -4,7 +4,7 @@ const Dashboard = () => {
   return (
     <div>
       <iframe
-        src="https://nourmaged0o0.pythonanywhere.com/"
+        src="http://127.0.0.1:5000/dashboard/"
         width="100%"
         height="530"
         style={{ border: "none" }}

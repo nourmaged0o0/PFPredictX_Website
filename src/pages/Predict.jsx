@@ -1,38 +1,45 @@
+import React, { useState } from 'react';
+import axios from 'axios';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
 
 const Predict = () => {
-  const [predictionData, setPredictionData] = useState({
-    currentPF: 0.75,
-    predictedPF: 0.82,
-    confidence: 0.89,
-    nextWeekTrend: 'improving',
-    alerts: [
-      { type: 'warning', message: 'Power factor dropped below threshold', time: '2 hours ago' },
-      { type: 'info', message: 'Maintenance scheduled for next week', time: '1 day ago' }
-    ]
-  });
+  const [file, setFile] = useState(null);
+  const [predictions, setPredictions] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Animation variants for staggered children
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2
-      }
-    }
+  const formatTime = (index) => {
+    const hours = Math.floor(index * 15 / 60);
+    const minutes = (index * 15) % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100
-      }
+  const handleFileChange = (event) => {
+    setFile(event.target.files[0]);
+    setError(null);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!file) {
+      setError('Please select a CSV file');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.post('http://127.0.0.1:5000/predict', formData);
+      setPredictions(response.data.prediction);
+    } catch (err) {
+      console.error("Error details:", err.response?.data);
+      setError(err.response?.data?.error || err.response?.data?.message || 'An error occurred while making predictions');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -40,190 +47,116 @@ const Predict = () => {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.8 }}
       className="container mx-auto p-8"
     >
-      <motion.h1 
-        initial={{ x: -50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
-        className="text-4xl font-bold text-white mb-6"
-      >
-        Power Factor Prediction
-      </motion.h1>
+      <div className="max-w-4xl mx-auto">
+        <motion.h1 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="text-5xl font-bold text-white mb-6 text-center"
+        >
+          Power Factor <span className="text-[#e43721]">Prediction</span>
+        </motion.h1>
+        
+        <motion.p 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="text-xl mb-8 text-gray-300 text-center"
+        >
+          Upload your CSV file to get power factor predictions for the next 24 hours
+        </motion.p>
 
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        {/* Current Power Factor Card */}
-        <motion.div 
-          variants={itemVariants}
-          whileHover={{ 
-            scale: 1.03,
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)"
-          }}
-          className="bg-[#1e1e1e] p-6 rounded-lg shadow-lg border-l-4 border-[#e43721]"
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+          className="bg-[#1e1e1e] p-8 rounded-lg shadow-lg border border-gray-800 mb-8"
         >
-          <h2 className="text-xl font-semibold text-white mb-4">Current Power Factor</h2>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-3xl font-bold text-white">{predictionData.currentPF}</span>
-            <span className="text-gray-400">Measured value</span>
-          </div>
-          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${predictionData.currentPF * 100}%` }}
-              transition={{ duration: 1, delay: 0.5 }}
-              className="h-full bg-[#e43721]"
-            ></motion.div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">Last updated: Today, 14:30</p>
-        </motion.div>
-        
-        {/* Predicted Power Factor Card */}
-        <motion.div 
-          variants={itemVariants}
-          whileHover={{ 
-            scale: 1.03,
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)"
-          }}
-          className="bg-[#1e1e1e] p-6 rounded-lg shadow-lg border-l-4 border-black"
-        >
-          <h2 className="text-xl font-semibold text-white mb-4">Predicted Power Factor</h2>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-3xl font-bold text-white">{predictionData.predictedPF}</span>
-            <span className="text-gray-400">ML model prediction</span>
-          </div>
-          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${predictionData.predictedPF * 100}%` }}
-              transition={{ duration: 1, delay: 0.5 }}
-              className="h-full bg-[#e43721]"
-            ></motion.div>
-          </div>
-          <div className="flex items-center mt-2">
-            <span className="text-sm text-gray-500 mr-2">Confidence:</span>
-            <span className="text-sm text-[#e43721] font-medium">{Math.round(predictionData.confidence * 100)}%</span>
-          </div>
-        </motion.div>
-        
-        {/* Trend Analysis Card */}
-        <motion.div 
-          variants={itemVariants}
-          whileHover={{ 
-            scale: 1.03,
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)"
-          }}
-          className="bg-[#1e1e1e] p-6 rounded-lg shadow-lg border-l-4 border-[#e43721]"
-        >
-          <h2 className="text-xl font-semibold text-white mb-4">Trend Analysis</h2>
-          <div className="h-32 bg-gray-900 rounded-lg flex items-center justify-center mb-4">
-            <motion.div 
-              animate={{ 
-                scale: [1, 1.2, 1],
-                opacity: [0.5, 1, 0.5]
-              }}
-              transition={{ 
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-              className="text-[#e43721] text-4xl"
+          <form onSubmit={handleSubmit}>
+            <div className="mb-6">
+              <label className="block text-gray-300 text-lg font-medium mb-4">
+                Upload CSV File
+              </label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="block w-full text-gray-300
+                  file:mr-4 file:py-3 file:px-6
+                  file:rounded-lg file:border-0
+                  file:text-lg file:font-medium
+                  file:bg-[#e43721] file:text-white
+                  hover:file:bg-[#c62e1c]
+                  cursor-pointer"
+              />
+            </div>
+            
+            <motion.button
+              type="submit"
+              disabled={loading}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-full bg-[#e43721] text-white py-3 px-6 rounded-lg text-lg font-medium
+                disabled:opacity-50 disabled:cursor-not-allowed
+                hover:bg-[#c62e1c] transition-colors"
             >
-              📈
+              {loading ? 'Processing...' : 'Get Predictions'}
+            </motion.button>
+          </form>
+
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg"
+            >
+              {error}
             </motion.div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-400">Next week trend:</span>
-            <span className={`text-sm font-medium ${predictionData.nextWeekTrend === 'improving' ? 'text-green-400' : 'text-red-400'}`}>
-              {predictionData.nextWeekTrend === 'improving' ? 'Improving' : 'Declining'}
-            </span>
-          </div>
+          )}
         </motion.div>
-      </motion.div>
 
-      {/* Alerts Section */}
-      <motion.div 
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.5 }}
-        className="mt-8"
-      >
-        <h2 className="text-2xl font-bold text-white mb-4">Alerts & Notifications</h2>
-        <div className="bg-[#1e1e1e] p-6 rounded-lg shadow-lg border border-gray-800">
-          <div className="space-y-3">
-            {predictionData.alerts.map((alert, index) => (
-              <motion.div 
-                key={index}
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.8 + (index * 0.2) }}
-                className={`p-3 ${
-                  alert.type === 'warning' 
-                    ? 'bg-red-900/30 text-red-300' 
-                    : 'bg-yellow-900/30 text-yellow-300'
-                } rounded-md flex items-center justify-between`}
-              >
-                <div className="flex items-center">
-                  <span className="mr-2">⚠️</span>
-                  <span>{alert.message}</span>
-                </div>
-                <span className="text-xs opacity-70">{alert.time}</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ML Model Info */}
-      <motion.div 
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 1, duration: 0.5 }}
-        className="mt-8"
-      >
-        <h2 className="text-2xl font-bold text-white mb-4">Machine Learning Model</h2>
-        <div className="bg-[#1e1e1e] p-6 rounded-lg shadow-lg border border-gray-800">
-          <p className="text-gray-300 mb-4">
-            Our machine learning model analyzes historical power factor data, load patterns, and environmental factors to predict future power factor values.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-white mb-2">Input Features</h3>
-              <ul className="text-gray-400 text-sm space-y-1">
-                <li>• Historical power factor data</li>
-                <li>• Time of day patterns</li>
-                <li>• Seasonal variations</li>
-                <li>• Load characteristics</li>
-              </ul>
+        {predictions && (
+          <motion.div 
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
+            className="bg-[#1e1e1e] p-8 rounded-lg shadow-lg border border-gray-800"
+          >
+            <h2 className="text-3xl font-bold text-white mb-6 text-center">Prediction Results</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-700">
+                <thead className="bg-[#2a2a2a]">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                      Time
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
+                      Predicted PF
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {predictions.map((value, index) => (
+                    <tr key={index} className="hover:bg-[#2a2a2a] transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {formatTime(index)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {typeof value === 'number' ? value.toFixed(3) : value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-white mb-2">Model Architecture</h3>
-              <ul className="text-gray-400 text-sm space-y-1">
-                <li>• LSTM neural network</li>
-                <li>• 3 hidden layers</li>
-                <li>• Dropout for regularization</li>
-                <li>• Adam optimizer</li>
-              </ul>
-            </div>
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-white mb-2">Performance Metrics</h3>
-              <ul className="text-gray-400 text-sm space-y-1">
-                <li>• Mean Absolute Error: 0.03</li>
-                <li>• R² Score: 0.92</li>
-                <li>• Training time: 45 minutes</li>
-                <li>• Last updated: 2 days ago</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </motion.div>
+          </motion.div>
+        )}
+      </div>
     </motion.div>
   );
 };
 
-export default Predict; 
+export default Predict;
